@@ -1,0 +1,296 @@
+---
+import Base from "../layouts/Base.astro";
+---
+
+<Base title="SpriteClub - Noah Schell" currentPage="projects">
+  <h1>SpriteClub</h1>
+
+  <p>
+    A NES game I wrote in 6502 assembly with Danny Youstra, Giancarlo Massimo, and Lance Cartwright.
+    Here is some <a href="https://youtu.be/AYyYQNQkjIA?si=AC1ETaTp7IGdLF36" target="_blank" rel="noopener">gamplay</a> and 
+    here is the <a href="https://github.com/dyoustra/spriteclub" target="_blank" rel="noopener">source code</a>.
+  </p>
+
+  <p>
+    The music is a cover of <em>Where is My Mind?</em> by Pixies, the artwork is inspired by another NES homebrew game, 
+    <a href="https://www.youtube.com/watch?v=ZWQ0591PAxM" target="_blank" rel="noopener">Micro Mages</a>. 
+    <a href="https://www.youtube.com/watch?v=RtY5FV5TrIU" target="_blank" rel="noopener">NesHacker</a> and 
+    <a href="https://www.youtube.com/watch?v=V5uWqdK92i0" target="_blank" rel="noopener">Inkbox</a> 
+    were extremely valuable resources in learning how to program for the NES.
+  </p>
+
+  <p>
+    The current high score is 3975. Good luck.
+  </p>
+
+  <div class="emu-wrap">
+    <canvas id="nes-canvas" width="256" height="240"></canvas>
+    <button id="nes-start" type="button">Click to start</button>
+    <div id="nes-hud" class="hidden">
+      <button id="nes-sound" type="button">Sound: off</button>
+      <span id="nes-fps">-- fps</span>
+    </div>
+  </div>
+
+  <h2>Controls</h2>
+  <ul class="controls">
+    <li><span class="key">Arrows</span> D-pad</li>
+    <li><span class="key">f</span> Attack (A)</li>
+    <li><span class="key">d</span> Roll (B)</li>
+    <li><span class="key">r</span> Restart</li>
+  </ul>
+</Base>
+
+<style>
+  .emu-wrap {
+    margin: 1.5rem 0 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+  #nes-canvas {
+    width: 100%;
+    max-width: 512px;
+    aspect-ratio: 256 / 240;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    background: #000;
+    border: 1px solid var(--border);
+    display: block;
+  }
+  #nes-start,
+  #nes-sound {
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: var(--text);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  #nes-start:hover,
+  #nes-sound:hover {
+    opacity: 0.8;
+  }
+  #nes-hud {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  .hidden {
+    display: none !important;
+  }
+  #nes-fps {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    min-width: 4rem;
+  }
+  .controls {
+    list-style: none;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+  }
+  .controls li {
+    padding: 0.25rem 0;
+  }
+  .key {
+    display: inline-block;
+    min-width: 4rem;
+    color: var(--text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.85rem;
+  }
+</style>
+
+<script is:inline src="https://unpkg.com/jsnes@1.2.1/dist/jsnes.min.js"></script>
+<script is:inline>
+  (function () {
+    const ROM_URL = "/spriteclub.nes";
+    const SCREEN_W = 256;
+    const SCREEN_H = 240;
+    const SAMPLE_RATE = 44100;
+
+    const canvas = document.getElementById("nes-canvas");
+    const startBtn = document.getElementById("nes-start");
+    const hud = document.getElementById("nes-hud");
+    const soundBtn = document.getElementById("nes-sound");
+    const fpsEl = document.getElementById("nes-fps");
+    const ctx = canvas.getContext("2d", { alpha: false });
+    const imageData = ctx.getImageData(0, 0, SCREEN_W, SCREEN_H);
+    const buf32 = new Uint32Array(imageData.data.buffer);
+    const ALPHA = 0xff000000 | 0;
+    for (let i = 0; i < buf32.length; i++) buf32[i] = ALPHA;
+
+    const AUDIO_BUF_SIZE = 8192;
+    const audioL = new Float32Array(AUDIO_BUF_SIZE);
+    const audioR = new Float32Array(AUDIO_BUF_SIZE);
+    let audioWrite = 0;
+    let audioRead = 0;
+    let soundEnabled = false;
+
+    const nes = new jsnes.NES({
+      onFrame: function (frameBuffer) {
+        for (let i = 0; i < frameBuffer.length; i++) {
+          buf32[i] = ALPHA | frameBuffer[i];
+        }
+        ctx.putImageData(imageData, 0, 0);
+      },
+      onAudioSample: function (l, r) {
+        if (!soundEnabled) return;
+        audioL[audioWrite] = l;
+        audioR[audioWrite] = r;
+        audioWrite = (audioWrite + 1) % AUDIO_BUF_SIZE;
+        if (audioWrite === audioRead) {
+          audioRead = (audioRead + 1) % AUDIO_BUF_SIZE;
+        }
+      },
+      sampleRate: SAMPLE_RATE,
+    });
+
+    const KEY_MAP = {
+      ArrowUp: jsnes.Controller.BUTTON_UP,
+      ArrowDown: jsnes.Controller.BUTTON_DOWN,
+      ArrowLeft: jsnes.Controller.BUTTON_LEFT,
+      ArrowRight: jsnes.Controller.BUTTON_RIGHT,
+      KeyZ: jsnes.Controller.BUTTON_B,
+      KeyX: jsnes.Controller.BUTTON_A,
+      KeyD: jsnes.Controller.BUTTON_B,
+      KeyF: jsnes.Controller.BUTTON_A,
+      Enter: jsnes.Controller.BUTTON_START,
+      ShiftLeft: jsnes.Controller.BUTTON_SELECT,
+      ShiftRight: jsnes.Controller.BUTTON_SELECT,
+    };
+
+    let romStr = null;
+    function restart() {
+      if (!romStr) return;
+      nes.loadROM(romStr);
+      audioRead = audioWrite = 0;
+    }
+
+    function bindKeys() {
+      window.addEventListener("keydown", (e) => {
+        if (e.code === "KeyR") {
+          restart();
+          e.preventDefault();
+          return;
+        }
+        const btn = KEY_MAP[e.code];
+        if (btn !== undefined) {
+          nes.buttonDown(1, btn);
+          e.preventDefault();
+        }
+      });
+      window.addEventListener("keyup", (e) => {
+        const btn = KEY_MAP[e.code];
+        if (btn !== undefined) {
+          nes.buttonUp(1, btn);
+          e.preventDefault();
+        }
+      });
+    }
+
+    let audioCtx = null;
+    function enableAudio() {
+      if (audioCtx) {
+        audioCtx.resume();
+        soundEnabled = true;
+        return;
+      }
+      const AudioCtor = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioCtor({ sampleRate: SAMPLE_RATE });
+      const node = audioCtx.createScriptProcessor(2048, 0, 2);
+      node.onaudioprocess = (e) => {
+        const outL = e.outputBuffer.getChannelData(0);
+        const outR = e.outputBuffer.getChannelData(1);
+        for (let i = 0; i < outL.length; i++) {
+          if (audioRead === audioWrite) {
+            outL[i] = 0;
+            outR[i] = 0;
+          } else {
+            outL[i] = audioL[audioRead];
+            outR[i] = audioR[audioRead];
+            audioRead = (audioRead + 1) % AUDIO_BUF_SIZE;
+          }
+        }
+      };
+      node.connect(audioCtx.destination);
+      soundEnabled = true;
+    }
+
+    function disableAudio() {
+      soundEnabled = false;
+      audioRead = audioWrite = 0;
+      if (audioCtx) audioCtx.suspend();
+    }
+
+    soundBtn.addEventListener("click", () => {
+      if (soundEnabled) {
+        disableAudio();
+        soundBtn.textContent = "Sound: off";
+      } else {
+        enableAudio();
+        soundBtn.textContent = "Sound: on";
+      }
+    });
+
+    let running = false;
+    let lastFpsUpdate = 0;
+    let framesSinceUpdate = 0;
+    const FRAME_MS = 1000 / 60;
+    let accumulator = 0;
+    let prevNow = 0;
+    function runLoop(now) {
+      if (prevNow === 0) prevNow = now;
+      accumulator += now - prevNow;
+      prevNow = now;
+      if (accumulator > FRAME_MS * 5) accumulator = FRAME_MS * 5;
+      while (accumulator >= FRAME_MS) {
+        nes.frame();
+        framesSinceUpdate++;
+        accumulator -= FRAME_MS;
+      }
+      if (now - lastFpsUpdate >= 500) {
+        const fps = (framesSinceUpdate * 1000) / (now - lastFpsUpdate);
+        fpsEl.textContent = fps.toFixed(0) + " fps";
+        lastFpsUpdate = now;
+        framesSinceUpdate = 0;
+      }
+      requestAnimationFrame(runLoop);
+    }
+
+    async function boot() {
+      if (running) return;
+      running = true;
+      startBtn.disabled = true;
+      startBtn.textContent = "Loading...";
+      try {
+        const res = await fetch(ROM_URL);
+        if (!res.ok) throw new Error("ROM fetch failed: " + res.status);
+        const bytes = new Uint8Array(await res.arrayBuffer());
+        let s = "";
+        for (let i = 0; i < bytes.length; i++) {
+          s += String.fromCharCode(bytes[i]);
+        }
+        romStr = s;
+        nes.loadROM(romStr);
+        bindKeys();
+        startBtn.classList.add("hidden");
+        hud.classList.remove("hidden");
+        canvas.focus();
+        lastFpsUpdate = performance.now();
+        requestAnimationFrame(runLoop);
+      } catch (err) {
+        running = false;
+        startBtn.disabled = false;
+        startBtn.textContent = "Failed — click to retry";
+        console.error(err);
+      }
+    }
+
+    startBtn.addEventListener("click", boot);
+  })();
+</script>

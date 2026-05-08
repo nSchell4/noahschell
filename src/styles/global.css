@@ -133,7 +133,7 @@ p {
 
 .project-list .name {
   font-weight: 500;
-  color: var(--text);
+  color: var(--link);
 }
 
 .project-list .desc {
