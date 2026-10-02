@@ -1,0 +1,98 @@
+---
+import Base from "../layouts/Base.astro";
+---
+
+<Base title="Current - Noah Schell" currentPage="current">
+    <section aria-labelledby="bookshelf-heading">
+        <h1 id="bookshelf-heading">Books</h1>
+        <ul>
+            <li>
+                Secret Thoughts of an Unlikely Convert{" "}
+                <span>— Rosaria Butterfield</span>
+            </li>
+            <li>
+                The Bruised Reed <span>— Richard Sibbes</span>
+            </li>
+            <li>
+                Leisure, the Basis of Culture <span>— Josef Pieper</span>
+            </li>
+            <li>
+                Piranesi <span>— Susanna Clarke</span>
+            </li>
+            <li>
+                Gentle and Lowly <span>— Dane Ortlund</span>
+            </li>
+            <li>
+                Desiring God <span>— John Piper</span>
+            </li>
+        </ul>
+    </section>
+
+    <section aria-labelledby="piano-heading">
+        <h2 id="piano-heading">Piano</h2>
+        <ul>
+            <li>
+                Träumerei<span> — Schumann</span>
+            </li>
+            <li>
+                Jesu, Joy of Man's Desiring<span> — Bach (arr. Hess)</span>
+            </li>
+            <li>
+                Stoptime Rag<span> — Joplin</span>
+            </li>
+            <li>
+                Minuet in G<span> — Paderewski</span>
+            </li>
+            <li>
+                Norwegian Dance No. II<span> — Grieg</span>
+            </li>
+            <li>
+                Hallelujah<span> — Cohen</span>
+                <div class="desc">
+                    <span>A duet with my girlfriend, Sara</span>
+                </div>
+            </li>
+        </ul>
+    </section>
+
+    <section aria-labelledby="classes-heading">
+        <h2 id="classes-heading">Classes</h2>
+        <ul>
+            <li>
+                Structure and Implementation of Modern Programming Languages
+            </li>
+            <li>Network Security and Privacy</li>
+            <li>Real Analysis I</li>
+            <li>Introduction to Algebraic Structures</li>
+        </ul>
+    </section>
+</Base>
+
+<style>
+    section + section {
+        margin-top: 2.5rem;
+    }
+
+    h1,
+    h2 {
+        font-size: 1.1rem;
+        font-weight: 500;
+        color: var(--link);
+        margin: 0 0 0.75rem;
+    }
+
+    ul {
+        list-style: none;
+        border-top: 1px solid var(--border);
+    }
+
+    li {
+        padding: 0.7rem 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 0.9rem;
+    }
+
+    li span {
+        color: var(--text-muted);
+    }
+</style>
